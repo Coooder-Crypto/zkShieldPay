@@ -23,10 +23,10 @@ export function WalletSelector() {
     } catch (error) {
       console.error("Connection failed:", error);
       // Display user-friendly error messages
-      if (error.message?.includes("Cross-Origin-Opener-Policy")) {
+      if ((error as any)?.message?.includes("Cross-Origin-Opener-Policy")) {
         alert("Wallet connection failed: Please ensure you're using HTTPS access (https://localhost:3000)");
       } else {
-        alert(`Wallet connection failed: ${error.message || "Unknown error"}`);
+        alert(`Wallet connection failed: ${(error as any)?.message || "Unknown error"}`);
       }
     }
   };

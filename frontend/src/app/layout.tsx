@@ -25,7 +25,6 @@ export default function RootLayout({
         className={`${inter.variable} font-sans antialiased bg-gray-900 text-white`}
       >
         <WalletProvider>
-          <Navbar />
           {children}
         </WalletProvider>
       </body>
