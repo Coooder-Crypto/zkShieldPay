@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/components/WalletProvider";
+import Navbar from "@/components/Navbar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -9,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "我的 Aptos 钱包",
-  description: "基于 Aptos 的简单网页钱包",
+  title: "zkShieldPay",
+  description: "Privacy-focused payment wallet on Aptos - Secure, Anonymous, Decentralized",
 };
 
 export default function RootLayout({
@@ -19,11 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh">
+    <html lang="en">
       <body
-        className={`${inter.variable} font-sans antialiased bg-gray-100`}
+        className={`${inter.variable} font-sans antialiased bg-gray-900 text-white`}
       >
         <WalletProvider>
+          <Navbar />
           {children}
         </WalletProvider>
       </body>
