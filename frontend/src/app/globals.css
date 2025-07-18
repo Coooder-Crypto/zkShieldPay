@@ -46,43 +46,43 @@
 @layer utilities {
   /* Web3 style glow effects */
   .glow {
-    box-shadow: 0 0 20px theme('colors.purple.500' / 20%),
-                0 0 40px theme('colors.purple.500' / 10%);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2),
+                0 0 40px rgba(139, 92, 246, 0.1);
   }
 
   .glow-hover:hover {
-    box-shadow: 0 0 25px theme('colors.purple.500' / 30%),
-                0 0 50px theme('colors.purple.500' / 15%);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.3),
+                0 0 50px rgba(139, 92, 246, 0.15);
   }
 
   /* Grid background */
   .grid-bg {
     background-image: 
-      linear-gradient(to right, theme('colors.purple.500' / 10%) 1px, transparent 1px),
-      linear-gradient(to bottom, theme('colors.purple.500' / 10%) 1px, transparent 1px);
+      linear-gradient(to right, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
   /* Gradient border */
   .border-gradient {
     border: double 1px transparent;
-    background-image: linear-gradient(theme('colors.gray.900'), theme('colors.gray.900')),
-                      linear-gradient(to right, theme('colors.purple.500'), theme('colors.pink.500'));
+    background-image: linear-gradient(rgb(17, 24, 39), rgb(17, 24, 39)),
+                      linear-gradient(to right, rgb(139, 92, 246), rgb(236, 72, 153));
     background-origin: border-box;
     background-clip: padding-box, border-box;
   }
 
   /* Neon text effects */
   .neon-text {
-    text-shadow: 0 0 5px theme('colors.purple.500' / 50%),
-                 0 0 10px theme('colors.purple.500' / 30%),
-                 0 0 15px theme('colors.purple.500' / 20%);
+    text-shadow: 0 0 5px rgba(139, 92, 246, 0.5),
+                 0 0 10px rgba(139, 92, 246, 0.3),
+                 0 0 15px rgba(139, 92, 246, 0.2);
   }
 
   /* Glassmorphism effects */
   .glass {
     @apply bg-white/5 backdrop-blur-lg;
-    border: 1px solid theme('colors.white' / 10%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   /* Hover card effects */
@@ -92,7 +92,7 @@
 
   .hover-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px theme('colors.purple.500' / 10%);
+    box-shadow: 0 10px 20px rgba(139, 92, 246, 0.1);
   }
 
   /* Custom classes */

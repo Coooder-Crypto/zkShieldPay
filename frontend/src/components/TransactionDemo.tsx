@@ -37,7 +37,7 @@ export function TransactionDemo() {
           function: "0x1::aptos_coin::transfer",
           arguments: [recipient, (parseFloat(amount) * 100000000).toString()], // Convert to octas
         },
-      };
+      } as any;
 
       console.log("Sending transaction:", transaction);
 
@@ -52,7 +52,7 @@ export function TransactionDemo() {
       setAmount("");
     } catch (error) {
       console.error("Transaction failed:", error);
-      setMessage(`Transaction failed: ${error.message || "Unknown error"}`);
+      setMessage(`Transaction failed: ${(error as any)?.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
