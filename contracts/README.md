@@ -11,7 +11,7 @@
 | `shielded_pool`          | 对应某种币种的匿名池                  | 内部记录 coin_type | 如 AptosCoin、0xabc::usdc::USDC |
 | `shielded_registry`         | 用户 viewing key 注册 + 解密 note | 所有币种共用   |                                       |
 | `verifier_groth16`          | zkSNARK 验证                  | 所有币种共用   | 一套 verifying key 可通用于多币种              |
-| `shielded_asset_router | 管理币种与对应 pool                | 所有币种     | 路由功能（coinType => pool address）        |
+| `shielded_asset_router` | 管理币种与对应 pool                | 所有币种     | 路由功能（coinType => pool address）        |
 
 # 🏗 各模块职责与边界
 
