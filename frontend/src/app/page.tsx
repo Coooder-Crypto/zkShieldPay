@@ -3,26 +3,162 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { WalletSelector } from "@/components/WalletSelector";
 import Navbar from "@/components/Navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { 
+  Aptos,
+  AptosConfig,
+  Network,
+  EntryFunction,
+  TransactionPayload,
+  Serializer,
+  MoveString,
+  MoveVector,
+  U8,
+  InputTransactionData,
+  InputViewFunctionJsonData
+} from "@aptos-labs/ts-sdk";
+
+// Contract address
+const CONTRACT_ADDRESS = "0xc8c349e6536fc857aaeb779bd7af30ea59f3d8eb55019218b95cc3c1547ffe81";
+
+// Mock zk addresses mapping to real addresses
+const ZK_ADDRESS_MAPPING = {
+  "0x8bd63db745202c8cfe12155a8432e8492e82d4667e14a6270fbc9c9afd0098ed": "0zk8bd63db745202c8cfe12155a8432e8492e82d4667e14a6270fbc9c9afd0098ed",
+  "0xb0996e81bda9475bf1ad135f64b7064e97c193b428aecfa580530f4bd1cc1877": "0zkb0996e81bda9475bf1ad135f64b7064e97c193b428aecfa580530f4bd1cc1877"
+};
+
+// Aptos client for testnet
+const TESTNET_CLIENT = new Aptos(new AptosConfig({ network: Network.TESTNET }));
 
 export default function Home() {
-  const { connected, account } = useWallet();
-  const [showUnshieldModal, setShowUnshieldModal] = useState(false);
-  const [password, setPassword] = useState("");
+  const { connected, account, signAndSubmitTransaction } = useWallet();
+  const [showShieldModal, setShowShieldModal] = useState(false);
+  const [amount, setAmount] = useState("");
   const [isShielded, setIsShielded] = useState(true); // true = shield mode (dark), false = unshield mode (light)
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [shieldedBalance, setShieldedBalance] = useState(0);
 
-  const handleShieldToggle = () => {
-    if (password.length > 0) {
-      setIsLoading(true);
-      setShowUnshieldModal(false);
-      setPassword("");
+  // Get current mock zk address based on wallet address
+  const currentZkAddress = account?.address ? 
+    ZK_ADDRESS_MAPPING[account.address.toString() as keyof typeof ZK_ADDRESS_MAPPING] || 
+    `0zk${account.address.toString().slice(2)}` // Fallback for addresses not in mapping
+    : null;
+
+  // Load shielded balance from localStorage on component mount
+  useEffect(() => {
+    if (account?.address) {
+      const stored = localStorage.getItem(`shielded_balance_${account.address.toString()}`);
+      if (stored) {
+        setShieldedBalance(parseFloat(stored));
+      }
+    }
+  }, [account?.address]);
+
+  // Save shielded balance to localStorage whenever it changes
+  useEffect(() => {
+    if (account?.address) {
+      localStorage.setItem(`shielded_balance_${account.address.toString()}`, shieldedBalance.toString());
+    }
+  }, [shieldedBalance, account?.address]);
+
+  // Fetch wallet balance
+  useEffect(() => {
+    if (account?.address) {
+      const fetchBalance = async () => {
+        try {
+          const payload: InputViewFunctionJsonData = {
+            function: "0x1::coin::balance",
+            typeArguments: ["0x1::aptos_coin::AptosCoin"],
+            functionArguments: [account.address.toString()],
+          };
+          const [balance] = await TESTNET_CLIENT.viewJson<[number]>({ payload });
+          setWalletBalance(balance * 1e-8); // Convert from octas to APT
+        } catch (error) {
+          console.error("Failed to fetch balance:", error);
+        }
+      };
+      fetchBalance();
+      
+      // Refresh balance every 10 seconds
+      const interval = setInterval(fetchBalance, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [account?.address]);
+
+  const handleShieldToggle = async () => {
+    if (amount.length === 0 || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
+      setMessage("Please enter a valid amount (0 or greater)");
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+    
+    try {
+      // Call the appropriate contract function
+      const contractFunction = isShielded ? "shield_apt" : "unshield_apt";
+      
+      console.log(`Calling ${contractFunction} with zkId: "${currentZkAddress}", amount: ${amount}`);
+      
+      // Convert amount to octas and zkId to bytes
+      const amountInOctas = (parseFloat(amount) * 100000000).toString();
+      const zkIdBytes = Array.from(new TextEncoder().encode(currentZkAddress || ""));
+      
+      const transaction = {
+        data: {
+          function: `${CONTRACT_ADDRESS}::zk_pay::${contractFunction}`,
+          functionArguments: [zkIdBytes, amountInOctas],
+          typeArguments: [],
+        },
+      };
+
+      console.log("Test transaction payload:", transaction);
+      console.log("signAndSubmitTransaction function:", typeof signAndSubmitTransaction);
+      console.log("Connected:", connected);
+      console.log("Account:", account);
+      
+      if (!signAndSubmitTransaction) {
+        throw new Error("signAndSubmitTransaction function is not available");
+      }
+      
+      if (!connected || !account) {
+        throw new Error("Wallet not connected or account not available");
+      }
+      
+      console.log("Attempting to sign test transaction...");
+      const result = await signAndSubmitTransaction(transaction);
+      console.log(`Test transaction result:`, result);
       
       // Simulate loading for 1.5 seconds
       setTimeout(() => {
+        const transactionAmount = parseFloat(amount);
+        
+        // Update balances based on shield/unshield action
+        if (isShielded) {
+          // Shielding: move from wallet to shielded
+          setShieldedBalance(prev => prev + transactionAmount);
+        } else {
+          // Unshielding: move from shielded to wallet
+          setShieldedBalance(prev => Math.max(0, prev - transactionAmount));
+        }
+        
         setIsShielded(!isShielded);
         setIsLoading(false);
+        setShowShieldModal(false);
+        setAmount("");
+        setMessage(`${contractFunction} transaction successful!`);
+        
+        // Clear message after 3 seconds
+        setTimeout(() => {
+          setMessage("");
+        }, 3000);
       }, 1500);
+    } catch (error) {
+      console.error(`${isShielded ? 'Shield' : 'Unshield'} transaction failed:`, error);
+      setIsLoading(false);
+      setMessage(`Transaction failed: ${(error as any)?.message || "Unknown error"}`);
     }
   };
 
@@ -96,7 +232,11 @@ export default function Home() {
               <div className={`flex items-center justify-center gap-2 font-mono text-sm transition-colors duration-700 ${
                 isShielded ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                <span>{account?.address ? `${account.address.toString().slice(0, 8)}...${account.address.toString().slice(-6)}` : 'No address'}</span>
+                <span>{account?.address ? 
+                  isShielded ? 
+                    currentZkAddress ? `${currentZkAddress.slice(0, 8)}...${currentZkAddress.slice(-6)}` : 'No zk address' : 
+                    `${account.address.toString().slice(0, 8)}...${account.address.toString().slice(-6)}` 
+                  : 'No address'}</span>
                 <button className={`p-1 rounded transition-colors duration-300 ${
                   isShielded ? 'hover:bg-white/10' : 'hover:bg-gray-800/10'
                 }`}>
@@ -111,10 +251,10 @@ export default function Home() {
             <div className="mb-2">
               <div className={`text-4xl font-bold transition-colors duration-700 ${
                 isShielded ? 'text-white' : 'text-gray-900'
-              }`}>$ 0.00</div>
+              }`}>{(isShielded ? shieldedBalance : walletBalance).toFixed(4)} APT</div>
               <div className={`text-xs mt-1 transition-colors duration-700 ${
                 isShielded ? 'text-gray-500' : 'text-gray-600'
-              }`}>Pending balances: $ 0.00</div>
+              }`}>{isShielded ? 'Shielded balance' : 'Wallet balance'}</div>
             </div>
 
             {/* Action Buttons */}
@@ -140,7 +280,7 @@ export default function Home() {
                 Receive
               </button>
               <button 
-                onClick={() => setShowUnshieldModal(true)}
+                onClick={() => setShowShieldModal(true)}
                 className={`flex-1 rounded-lg py-3 px-4 text-sm font-medium transition-all duration-700 flex items-center justify-center gap-2 ${
                   isShielded 
                     ? 'bg-gray-800 border border-gray-700 text-white hover:bg-gray-700' 
@@ -258,15 +398,15 @@ export default function Home() {
                 }`}>Aptos Token</div>
                 <div className={`text-xs transition-colors duration-700 ${
                   isShielded ? 'text-gray-400' : 'text-gray-600'
-                }`}>APT • $ 0.00</div>
+                }`}>APT</div>
               </div>
               <div className="text-right">
                 <div className={`font-bold transition-colors duration-700 ${
                   isShielded ? 'text-white' : 'text-gray-900'
-                }`}>$ 0.00</div>
+                }`}>{(isShielded ? shieldedBalance : walletBalance).toFixed(4)} APT</div>
                 <div className={`text-xs transition-colors duration-700 ${
                   isShielded ? 'text-gray-400' : 'text-gray-600'
-                }`}>0.00</div>
+                }`}>{isShielded ? shieldedBalance.toFixed(4) : walletBalance.toFixed(4)}</div>
               </div>
             </div>
 
@@ -297,19 +437,28 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Unshield Password Modal */}
-        {showUnshieldModal && (
+        {/* Success Message */}
+        {message && message.includes('successful') && (
+          <div className="max-w-2xl mx-auto mt-4">
+            <div className="p-4 rounded-lg border border-green-500/20 bg-green-500/10">
+              <p className="text-sm text-green-400 text-center">{message}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Shield/Unshield Modal */}
+        {showShieldModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className={`border rounded-xl p-6 w-full max-w-md mx-4 transition-all duration-300 ${
+            <div className={`border rounded-xl p-8 w-full max-w-lg mx-4 transition-all duration-300 ${
               isShielded 
                 ? 'bg-gray-800 border-gray-700' 
                 : 'bg-white border-gray-300'
             }`}>
-              <div className="text-center mb-6">
-                <svg className="w-12 h-12 text-purple-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <div className="text-center mb-8">
+                <svg className="w-16 h-16 text-purple-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${
+                <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${
                   isShielded ? 'text-white' : 'text-gray-900'
                 }`}>
                   {isShielded ? "Unshield Assets" : "Shield Assets"}
@@ -317,36 +466,49 @@ export default function Home() {
                 <p className={`text-sm transition-colors duration-300 ${
                   isShielded ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Enter your password to {isShielded ? "unshield" : "shield"} your assets
+                  Enter amount to {isShielded ? "unshield" : "shield"} your assets
                 </p>
               </div>
 
-              <div className="mb-6">
-                <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${
-                  isShielded ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 ${
-                    isShielded 
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
-                  }`}
-                  placeholder="Enter your password"
-                />
+              <div className="space-y-6">
+                {/* Amount Input */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${
+                    isShielded ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Amount (APT)
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 ${
+                      isShielded 
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                    }`}
+                    placeholder="Enter amount (e.g., 0.1)"
+                    step="0.01"
+                  />
+                </div>
+
+
+                {/* Error Message */}
+                {message && (
+                  <div className="p-4 rounded-lg border border-red-500/20 bg-red-500/10">
+                    <p className="text-sm text-red-400">{message}</p>
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-4 mt-8">
                 <button
                   onClick={() => {
-                    setShowUnshieldModal(false);
-                    setPassword("");
+                    setShowShieldModal(false);
+                    setAmount("");
+                    setMessage("");
                   }}
-                  className={`flex-1 border rounded-lg py-2 px-4 text-sm font-medium transition-all duration-300 ${
+                  className={`flex-1 border rounded-lg py-3 px-4 text-sm font-medium transition-all duration-300 ${
                     isShielded 
                       ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600' 
                       : 'bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300'
@@ -356,10 +518,17 @@ export default function Home() {
                 </button>
                 <button
                   onClick={handleShieldToggle}
-                  className="flex-1 bg-purple-600 border border-purple-500 rounded-lg py-2 px-4 text-white text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={password.length === 0}
+                  className="flex-1 bg-purple-600 border border-purple-500 rounded-lg py-3 px-4 text-white text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={amount.length === 0 || isNaN(parseFloat(amount)) || parseFloat(amount) < 0 || isLoading}
                 >
-                  Confirm
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    "Confirm"
+                  )}
                 </button>
               </div>
             </div>
