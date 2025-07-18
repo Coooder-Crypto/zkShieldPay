@@ -61,3 +61,7 @@ certificates/
 
 # OS files
 Thumbs.db
+
+.aptos/
+build/
+.claude/

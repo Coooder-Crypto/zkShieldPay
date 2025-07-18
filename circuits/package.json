@@ -1,0 +1,16 @@
+{
+  "license": "NONE",
+  "name": "circuits-v2",
+  "version": "2.0.0",
+  "description": "ZK-SNARK circuits",
+  "scripts": {
+    "test": " mocha --exit --timeout 30000"
+  },
+  "devDependencies": {
+    "circom_tester": "0.0.18",
+    "mocha": "^9.2.0"
+  },
+  "dependencies": {
+    "circomlib": "2.0.5"
+  }
+}

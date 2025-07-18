@@ -1,0 +1,17 @@
+[package]
+name = "zkShieldPay"
+version = "1.0.0"
+authors = []
+
+[addresses]
+zkShieldPay = "0xc8c349e6536fc857aaeb779bd7af30ea59f3d8eb55019218b95cc3c1547ffe81"
+zk_simple = "0xc8c349e6536fc857aaeb779bd7af30ea59f3d8eb55019218b95cc3c1547ffe81"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "mainnet"
+subdir = "aptos-framework"
+
+[dev-dependencies]
