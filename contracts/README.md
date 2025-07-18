@@ -98,7 +98,7 @@ get_notes()（给前端查看）
 
 此模块与前端钱包配合，让用户轻松发现“我收到的隐私转账”。
 
-## 🪙 shielded_assets.move（可选）
+## 🪙 shielded_assets.move
 管理多种代币（APT/USDC等）隔离匿名池。
 
 结构：
