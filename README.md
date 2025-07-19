@@ -63,6 +63,9 @@ aptos move build
   <img src="https://img.shields.io/badge/Demo-YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white" alt="Youtube Demo" style="transform: scale(1.2);">
 </a>
 
+## 隐私架构
+![](./assets/架构图.jpg)
+
 zkShieldPay 有两种模式，分别是标准钱包(非隐私)模式，此时正常使用标准的 Aptos 钱包地址，以及抽象账户(隐私模式)，此时使用抽象地址进行交易。
 
 ## 界面一：入口页面
